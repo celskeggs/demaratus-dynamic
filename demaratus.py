@@ -8,6 +8,24 @@ from google.appengine.ext import ndb
 class DataBlock(ndb.Model):
 	contents = ndb.TextProperty(required=True)
 
+def digest(x):
+	digest = SHA256.new()
+	digest.update(x)
+	out = digest.digest().encode("hex")
+	assert len(out) == 64
+	return out
+def get_data(keyraw):
+	key = ndb.Key(DataBlock, keyraw)
+	blk = key.get()
+	data = blk.contents
+	assert digest(data) == keyraw, "Bad stored data - bad hash"
+	return data
+def put_data(data):
+	keyraw = digest(data)
+	key = ndb.Key(DataBlock, keyraw)
+	blk = DataBlock(key=key, contents=contents)
+	return blk.put()
+
 class TestPage(webapp2.RequestHandler):
 	def get(self):
 		self.response.headers["Content-Type"] = "text/plain"
@@ -59,7 +77,10 @@ class EditPage(webapp2.RequestHandler):
 
 <div id="editor">{contents}</div>
 <div id="sidebar">
-  <button id="submit">SUBMIT</button>
+  <form method="post" action="/add" id="sidebar-form">
+    <button id="submit">SUBMIT</button>
+	<input id="sidebar-data" name="data" value="" type="hidden" />
+  </form>
 </div>
     
 <script src="/static/ace/ace.js" type="text/javascript" charset="utf-8"></script>
@@ -68,14 +89,15 @@ class EditPage(webapp2.RequestHandler):
     editor.setTheme("ace/theme/monokai");
     // editor.getSession().setMode("ace/mode/javascript");
     function do_submit() {
-        alert(editor.getValue());
+		document.getElementById("sidebar-data").value = editor.getValue();
+		document.getElementById("sidebar-form").submit();
     }
     document.getElementById("submit").onclick = do_submit;
 </script>
 </body>
 </html>""".replace("{contents}",cgi.escape("<div>")))
 class TestPage2(webapp2.RequestHandler):
-	def get(self):
+	def post(self):
 		self.response.headers["Content-Type"] = "text/plain"
 		contents = self.request.get("data")
 		digest = SHA256.new()

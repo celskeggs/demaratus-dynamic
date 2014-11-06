@@ -28,35 +28,43 @@
 		color: white;
 		font: 15px "Monaco","Menlo","Ubuntu Mono","Consolas","source-code-pro",monospace;
 	}
+	#filelist button.disabled {
+		background-color: #772822;
+	}
 	.noselect {
-		-webkit-touch-callout: none;
+		/* -webkit-touch-callout: none;
 		-webkit-user-select: none;
 		-khtml-user-select: none;
 		-moz-user-select: none;
 		-ms-user-select: none;
-		user-select: none;
+		user-select: none; */
 	}
 	.header {
 		position: relative;
 		left: 0;
 		right: 0;
 		text-align: center;
-		margin-bottom: 20px;
+		margin-bottom: 10px;
 	}
-	#filelist-list {
+	.listing {
 		padding-left: 0px;
 		list-style-type: none;
 	}
-	#filelist-list li {
+	.listing .selected {
+		padding-left: 0px;
+		list-style-type: none;
+		color: white;
+	}
+	.listing li {
 		margin-left: 0px;
 		background-color: #373832;
 		margin-bottom: 10px;
 		text-align: center;
 	}
-	#filelist-list li:hover {
+	.listing li:hover {
 		background-color: #474842;
 	}
-	#filelist-list li:active {
+	.listing li:active {
 		background-color: #575852;
 	}
 </style>
@@ -66,20 +74,32 @@
 
 <div id="filelist" class="noselect">
 	<div class="header">Document Listing</div>
-	<div class="header" id="filelist-msg">Preloading...</div>
 	<div class="header">
-		<button type="button" id="refresh">REFRESH</button>
-		<button type="button" id="save">SAVE</button>
 		<button type="button" id="fetch">FETCH</button>
 		<button type="button" id="new">NEW</button>
 	</div>
-	<ul id="filelist-list">
+	<div class="header" id="filelist-msg">Preloading...</div>
+	<div class="header">
+		<button type="button" id="add-cred">ADD</button>
+		<button type="button" id="decrypt-any">DECRYPT*</button>
+		<button type="button" id="decrypt-one">DECRYPT</button>
+	</div>
+	<ul class="listing" id="credlist-list">
+	<li>Please wait</li>
+	</ul>
+	<div class="header">
+		<button type="button" id="refresh">REFRESH</button>
+		<button type="button" id="save">SAVE</button>
+		<button type="button" id="load">LOAD</button>
+	</div>
+	<ul class="listing" id="filelist-list">
 	<li>Please wait</li>
 	</ul>
 </div>
 <div id="editor">Loading...</div>
 
 <script src="/static/ace/ace.js" type="text/javascript" charset="utf-8"></script>
+<!-- <script src="/static/jsencrypt/jsencrypt.min.js" type="text/javascript" charset="utf-8"></script> -->
 <script src="/static/data.js" type="text/javascript" charset="utf-8"></script>
 <script>
 	var editor = ace.edit("editor");
@@ -97,6 +117,7 @@
 		});
 	};
 	function load_document(key) {
+		key = d_undashed(key);
 		editor.setValue("Loading: " + key);
 		d_get(key, function(data) {
 			editor.setValue(data);
@@ -113,8 +134,72 @@
 	document.getElementById("new").onclick = function() {
 		editor.setValue("");
 	};
+	document.getElementById("add-cred").onclick = function() {
+		var key = prompt("Enter Password");
+		if (key) {
+			d_add_credential(key);
+			refresh_local();
+		}
+	};
+	document.getElementById("decrypt-any").onclick = function() {
+		var decrypted = d_decrypt_any(editor.getValue());
+		if (decrypted.success) {
+			set_document_readout("Working credential: #" + decrypted.key_id + ".");
+			editor.setValue(decrypted.out);
+		} else {
+			set_document_readout("No working credentials.");
+		}
+	};
 	function set_document_readout(msg) {
 		document.getElementById("filelist-msg").textContent = msg;
+	}
+	function set_select(ent, unselect) {
+		for (var i=0; i<ent.parentNode.children.length; i++) {
+			ent.parentNode.children[i].classList.remove("selected");
+		}
+		if (!unselect) {
+			ent.classList.add("selected");
+		}
+	}
+	function get_select(ent) {
+		for (var i=0; i<ent.children.length; i++) {
+			if (ent.children[i].classList.contains("selected")) {
+				return ent.children[i];
+			}
+		}
+		return null;
+	}
+	document.getElementById("load").onclick = function() {
+		var key = get_select(document.getElementById("filelist-list"));
+		if (key) {
+			load_document(key.textContent);
+		}
+	};
+	function set_class(elem, cls, value) {
+		if (value) {
+			elem.classList.add(cls);
+		} else {
+			elem.classList.remove(cls);
+		}
+	}
+	function refresh_local() {
+		var list = document.getElementById("credlist-list");
+		while (list.children.length) {
+			list.removeChild(list.children[0]);
+		}
+		var elem = document.createElement("li");
+		elem.textContent = d_count_credentials() + " credentials:";
+		list.appendChild(elem);
+		d_list_credentials(function(line) {
+			var elem = document.createElement("li");
+			elem.textContent = line;
+			elem.onclick = function() {
+				editor.setValue(d_encrypt(this.textContent, editor.getValue()));
+			}.bind(elem);
+			list.appendChild(elem);
+		});
+		var selected = get_select(document.getElementById("filelist-list"));
+		set_class(document.getElementById("load"), "disabled", selected === null);
 	}
 	function refresh_listing() {
 		set_document_readout("Depopulating...");
@@ -125,11 +210,19 @@
 		set_document_readout("Loading...");
 		d_list(function(data) {
 			set_document_readout("Repopulating...");
+			var elem = document.createElement("li");
+			elem.textContent = data.length + " blocks:";
+			elem.onclick = function() {
+				set_select(this, true);
+				refresh_local();
+			}.bind(elem);
+			list.appendChild(elem);
 			for (var i=0; i<data.length; i++) {
 				var elem = document.createElement("li");
 				elem.textContent = d_dashed(data[i]);
 				elem.onclick = function() {
-					load_document(d_undashed(this.textContent));
+					set_select(this);
+					refresh_local();
 				}.bind(elem);
 				list.appendChild(elem);
 			}
@@ -139,12 +232,8 @@
 		});
 	}
 	document.getElementById("refresh").onclick = refresh_listing;
+	refresh_local();
 	refresh_listing();
-	/*var ciphertext = sjcl.encrypt("password", "Hello World!");
-	var plaintext = sjcl.decrypt("password", ciphertext);
-
-	console.log(ciphertext);
-	console.log(plaintext);*/
 </script>
 </body>
 </html>

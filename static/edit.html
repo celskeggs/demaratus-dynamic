@@ -10,7 +10,7 @@
 		bottom: 0;
 		left: 320px;
 	}
-	#filelist {
+	#sidebar {
 		position: absolute;
 		top: 0;
 		bottom: 0;
@@ -21,23 +21,15 @@
 		padding: 10px;
 		font: 15px "Monaco","Menlo","Ubuntu Mono","Consolas","source-code-pro",monospace;
 	}
-	#filelist button {
+	#sidebar button {
 		position: relative;
 		background-color: #277822;
 		border: none;
 		color: white;
 		font: 15px "Monaco","Menlo","Ubuntu Mono","Consolas","source-code-pro",monospace;
 	}
-	#filelist button.disabled {
+	#sidebar button.disabled {
 		background-color: #772822;
-	}
-	.noselect {
-		/* -webkit-touch-callout: none;
-		-webkit-user-select: none;
-		-khtml-user-select: none;
-		-moz-user-select: none;
-		-ms-user-select: none;
-		user-select: none; */
 	}
 	.header {
 		position: relative;
@@ -46,34 +38,16 @@
 		text-align: center;
 		margin-bottom: 10px;
 	}
-	.listing {
-		padding-left: 0px;
-		list-style-type: none;
-	}
-	.listing .selected {
-		padding-left: 0px;
-		list-style-type: none;
-		color: white;
-	}
-	.listing li {
-		margin-left: 0px;
-		background-color: #373832;
-		margin-bottom: 10px;
-		text-align: center;
-	}
-	.listing li:hover {
-		background-color: #474842;
-	}
-	.listing li:active {
-		background-color: #575852;
+	.flash {
+		color: red;
 	}
 </style>
 <script type="text/javascript" src="/static/sjcl.js"></script>
 </head>
 <body>
 
-<div id="filelist" class="noselect">
-	<div class="header">Document Listing</div>
+<div id="sidebar">
+	<div class="header">Demaratus Editor</div>
 	<div class="header">
 		<button type="button" id="fetch">FETCH</button>
 		<button type="button" id="new">NEW</button>
@@ -81,24 +55,24 @@
 	<div class="header" id="filelist-msg">Preloading...</div>
 	<div class="header">
 		<button type="button" id="add-cred">ADD</button>
+	</div>
+	<div class="header">
 		<button type="button" id="decrypt-any">DECRYPT*</button>
 		<button type="button" id="decrypt-one">DECRYPT</button>
+		<button type="button" id="encrypt">ENCRYPT</button>
 	</div>
-	<ul class="listing" id="credlist-list">
-	<li>Please wait</li>
-	</ul>
+	<div id="credlist"></div>
 	<div class="header">
 		<button type="button" id="refresh">REFRESH</button>
 		<button type="button" id="save">SAVE</button>
 		<button type="button" id="load">LOAD</button>
 	</div>
-	<ul class="listing" id="filelist-list">
-	<li>Please wait</li>
-	</ul>
+	<div id="filelist"></div>
 </div>
 <div id="editor">Loading...</div>
 
 <script src="/static/ace/ace.js" type="text/javascript" charset="utf-8"></script>
+<script src="/static/clist.js" type="text/javascript" charset="utf-8"></script>
 <!-- <script src="/static/jsencrypt/jsencrypt.min.js" type="text/javascript" charset="utf-8"></script> -->
 <script src="/static/data.js" type="text/javascript" charset="utf-8"></script>
 <script>
@@ -107,6 +81,7 @@
 	// editor.getSession().setMode("ace/mode/javascript");
 	var raw = "Enter text here.";
 	editor.setValue(raw);
+	var filelist = clist_bind("filelist", "blocks", function(x) {return x;}), credlist = clist_bind("credlist", "credentials", function(x) {return x;});
 	document.getElementById("save").onclick = function() {
 		d_put(editor.getValue(), function(key) {
 			editor.setValue("Saved as " + key);
@@ -137,42 +112,51 @@
 	document.getElementById("add-cred").onclick = function() {
 		var key = prompt("Enter Password");
 		if (key) {
-			d_add_credential(key);
-			refresh_local();
+			credlist.add(key);
+		}
+	};
+	document.getElementById("encrypt").onclick = function() {
+		var selected = credlist.selected();
+		if (selected !== null) {
+			var encrypted = d_encrypt(selected, editor.getValue());
+			set_document_readout("Encrypted.");
+			editor.setValue(encrypted);
+		}
+	};
+	document.getElementById("decrypt-one").onclick = function() {
+		var selected = credlist.selected();
+		if (selected !== null) {
+			var decrypted = d_decrypt(selected, editor.getValue());
+			if (decrypted !== null) {
+				set_document_readout("Decrypted.");
+				editor.setValue(decrypted);
+			} else {
+				set_document_readout("Failed.");
+				flash_document_readout();
+			}
 		}
 	};
 	document.getElementById("decrypt-any").onclick = function() {
-		var decrypted = d_decrypt_any(editor.getValue());
+		var decrypted = d_decrypt_any(credlist, editor.getValue());
 		if (decrypted.success) {
 			set_document_readout("Working credential: #" + decrypted.key_id + ".");
 			editor.setValue(decrypted.out);
 		} else {
 			set_document_readout("No working credentials.");
+			flash_document_readout();
 		}
 	};
+	function flash_document_readout() {
+		document.getElementById("filelist-msg").classList.add("flash");
+		setTimeout("document.getElementById('filelist-msg').classList.remove('flash')", 500);
+	}
 	function set_document_readout(msg) {
 		document.getElementById("filelist-msg").textContent = msg;
 	}
-	function set_select(ent, unselect) {
-		for (var i=0; i<ent.parentNode.children.length; i++) {
-			ent.parentNode.children[i].classList.remove("selected");
-		}
-		if (!unselect) {
-			ent.classList.add("selected");
-		}
-	}
-	function get_select(ent) {
-		for (var i=0; i<ent.children.length; i++) {
-			if (ent.children[i].classList.contains("selected")) {
-				return ent.children[i];
-			}
-		}
-		return null;
-	}
 	document.getElementById("load").onclick = function() {
-		var key = get_select(document.getElementById("filelist-list"));
+		var key = filelist.selected();
 		if (key) {
-			load_document(key.textContent);
+			load_document(key);
 		}
 	};
 	function set_class(elem, cls, value) {
@@ -183,48 +167,25 @@
 		}
 	}
 	function refresh_local() {
-		var list = document.getElementById("credlist-list");
-		while (list.children.length) {
-			list.removeChild(list.children[0]);
-		}
-		var elem = document.createElement("li");
-		elem.textContent = d_count_credentials() + " credentials:";
-		list.appendChild(elem);
-		d_list_credentials(function(line) {
-			var elem = document.createElement("li");
-			elem.textContent = line;
-			elem.onclick = function() {
-				editor.setValue(d_encrypt(this.textContent, editor.getValue()));
-			}.bind(elem);
-			list.appendChild(elem);
-		});
-		var selected = get_select(document.getElementById("filelist-list"));
-		set_class(document.getElementById("load"), "disabled", selected === null);
+		// editor.setValue(d_encrypt(this.textContent, editor.getValue()));
+		set_class(document.getElementById("load"), "disabled", filelist.selected() === null);
+		var value = editor.getValue();
+		var valid_decrypt = value !== null && value.contains("\"iv\":\"") && value.contains("\"salt\":\"");
+		set_class(document.getElementById("decrypt-one"), "disabled", !valid_decrypt || credlist.selected() === null);
+		set_class(document.getElementById("decrypt-any"), "disabled", !valid_decrypt);
+		set_class(document.getElementById("encrypt"), "disabled", credlist.selected() === null);
 	}
+	filelist.listeners.push(refresh_local);
+	credlist.listeners.push(refresh_local);
+	editor.on("change", refresh_local);
 	function refresh_listing() {
 		set_document_readout("Depopulating...");
-		var list = document.getElementById("filelist-list");
-		while (list.children.length) {
-			list.removeChild(list.children[0]);
-		}
+		filelist.clear();
 		set_document_readout("Loading...");
 		d_list(function(data) {
 			set_document_readout("Repopulating...");
-			var elem = document.createElement("li");
-			elem.textContent = data.length + " blocks:";
-			elem.onclick = function() {
-				set_select(this, true);
-				refresh_local();
-			}.bind(elem);
-			list.appendChild(elem);
 			for (var i=0; i<data.length; i++) {
-				var elem = document.createElement("li");
-				elem.textContent = d_dashed(data[i]);
-				elem.onclick = function() {
-					set_select(this);
-					refresh_local();
-				}.bind(elem);
-				list.appendChild(elem);
+				filelist.add(d_dashed(data[i]));
 			}
 			set_document_readout("Loaded.");
 		}, function(x) {

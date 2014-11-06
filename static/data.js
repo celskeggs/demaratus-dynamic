@@ -1,4 +1,3 @@
-var d_creds = [];
 function d_encrypt(password, plaintext) {
 	return sjcl.encrypt(password, plaintext, {iter:2000, ts:128, ks: 256});
 }
@@ -9,29 +8,14 @@ function d_decrypt(password, plaintext) {
 		return null;
 	}
 }
-function d_decrypt_any(plaintext) {
-	for (var i=0; i<d_creds.length; i++) {
-		var decry = d_decrypt(d_creds[i], plaintext);
+function d_decrypt_any(credlist, plaintext) {
+	for (var i=0; i<credlist.length(); i++) {
+		var decry = d_decrypt(credlist.get(i), plaintext);
 		if (decry !== null) {
-			return {success: true, key_id: i, key: d_creds[i], out: decry};
+			return {success: true, key_id: i, key: credlist.get(i), out: decry};
 		}
 	}
 	return {success: false};
-}
-function d_add_credential(cred) {
-	d_creds.push(cred);
-}
-function d_remove_credential(cred) {
-	var index = d_creds.indexOf(cred);
-	d_creds.splice(index, 1);
-}
-function d_count_credentials() {
-	return d_creds.length;
-}
-function d_list_credentials(cb) {
-	for (var i=0; i<d_creds.length; i++) {
-		cb(d_creds[i]);
-	}
 }
 function d_list(success, failure) {
 	var xhr = new XMLHttpRequest();

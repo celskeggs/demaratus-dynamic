@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>Demaratus Editor</title>
+<style type="text/css" media="screen">
+	#editor { 
+		position: absolute;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		left: 320px;
+	}
+	#filelist {
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		left: 0;
+		width: 300px;
+		background-color: #272822;
+		color: #8f908a;
+		padding: 10px;
+		font: 15px "Monaco","Menlo","Ubuntu Mono","Consolas","source-code-pro",monospace;
+	}
+	#filelist button {
+		position: relative;
+		background-color: #277822;
+		border: none;
+		color: white;
+		font: 15px "Monaco","Menlo","Ubuntu Mono","Consolas","source-code-pro",monospace;
+	}
+	.noselect {
+		-webkit-touch-callout: none;
+		-webkit-user-select: none;
+		-khtml-user-select: none;
+		-moz-user-select: none;
+		-ms-user-select: none;
+		user-select: none;
+	}
+	.header {
+		position: relative;
+		left: 0;
+		right: 0;
+		text-align: center;
+		margin-bottom: 20px;
+	}
+	#filelist-list {
+		padding-left: 0px;
+		list-style-type: none;
+	}
+	#filelist-list li {
+		margin-left: 0px;
+		background-color: #373832;
+		margin-bottom: 10px;
+		text-align: center;
+	}
+	#filelist-list li:hover {
+		background-color: #474842;
+	}
+	#filelist-list li:active {
+		background-color: #575852;
+	}
+</style>
+<script type="text/javascript" src="/static/sjcl.js"></script>
+</head>
+<body>
+
+<div id="filelist" class="noselect">
+	<div class="header">Document Listing</div>
+	<div class="header" id="filelist-msg">Preloading...</div>
+	<div class="header">
+		<button type="button" id="refresh">REFRESH</button>
+		<button type="button" id="save">SAVE</button>
+		<button type="button" id="fetch">FETCH</button>
+		<button type="button" id="new">NEW</button>
+	</div>
+	<ul id="filelist-list">
+	<li>Please wait</li>
+	</ul>
+</div>
+<div id="editor">Loading...</div>
+
+<script src="/static/ace/ace.js" type="text/javascript" charset="utf-8"></script>
+<script src="/static/data.js" type="text/javascript" charset="utf-8"></script>
+<script>
+	var editor = ace.edit("editor");
+	editor.setTheme("ace/theme/monokai");
+	// editor.getSession().setMode("ace/mode/javascript");
+	var raw = "Enter text here.";
+	editor.setValue(raw);
+	document.getElementById("save").onclick = function() {
+		d_put(editor.getValue(), function(key) {
+			editor.setValue("Saved as " + key);
+			setTimeout("refresh_listing()", 500);
+		}, function(x) {
+			alert("Could not save: " + x);
+			setTimeout("refresh_listing()", 500);
+		});
+	};
+	function load_document(key) {
+		editor.setValue("Loading: " + key);
+		d_get(key, function(data) {
+			editor.setValue(data);
+		}, function(x) {
+			editor.setValue("Failed loading " + key + " (" + x + ")");
+		});
+	}
+	document.getElementById("fetch").onclick = function() {
+		var key = prompt("Enter Key");
+		if (key) {
+			load_document(key);
+		}
+	};
+	document.getElementById("new").onclick = function() {
+		editor.setValue("");
+	};
+	function set_document_readout(msg) {
+		document.getElementById("filelist-msg").textContent = msg;
+	}
+	function refresh_listing() {
+		set_document_readout("Depopulating...");
+		var list = document.getElementById("filelist-list");
+		while (list.children.length) {
+			list.removeChild(list.children[0]);
+		}
+		set_document_readout("Loading...");
+		d_list(function(data) {
+			set_document_readout("Repopulating...");
+			for (var i=0; i<data.length; i++) {
+				var elem = document.createElement("li");
+				elem.textContent = d_dashed(data[i]);
+				elem.onclick = function() {
+					load_document(d_undashed(this.textContent));
+				}.bind(elem);
+				list.appendChild(elem);
+			}
+			set_document_readout("Loaded.");
+		}, function(x) {
+			set_document_readout("Error: " + x);
+		});
+	}
+	document.getElementById("refresh").onclick = refresh_listing;
+	refresh_listing();
+	/*var ciphertext = sjcl.encrypt("password", "Hello World!");
+	var plaintext = sjcl.decrypt("password", ciphertext);
+
+	console.log(ciphertext);
+	console.log(plaintext);*/
+</script>
+</body>
+</html>

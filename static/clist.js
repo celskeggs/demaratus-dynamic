@@ -67,7 +67,6 @@ function clist_bind(docid, suffix, stringifier) {
 				}
 				notify();
 			}.bind(elem);
-			console.log("added", elem, "to", ul);
 			ul.appendChild(elem);
 			notify();
 		}, remove: function(x) {

@@ -21,16 +21,6 @@
 		padding: 10px;
 		font: 15px "Monaco","Menlo","Ubuntu Mono","Consolas","source-code-pro",monospace;
 	}
-	#sidebar button {
-		position: relative;
-		background-color: #277822;
-		border: none;
-		color: white;
-		font: 15px "Monaco","Menlo","Ubuntu Mono","Consolas","source-code-pro",monospace;
-	}
-	#sidebar button.disabled {
-		background-color: #772822;
-	}
 	.header {
 		position: relative;
 		left: 0;
@@ -48,6 +38,7 @@
 
 <div id="sidebar">
 	<div class="header">Demaratus Editor</div>
+	<div class="header" id="globalbtns"></div>
 	<div class="header">
 		<button type="button" id="fetch">FETCH</button>
 		<button type="button" id="new">NEW</button>
@@ -73,6 +64,7 @@
 
 <script src="/static/ace/ace.js" type="text/javascript" charset="utf-8"></script>
 <script src="/static/clist.js" type="text/javascript" charset="utf-8"></script>
+<script src="/static/btnset.js" type="text/javascript" charset="utf-8"></script>
 <!-- <script src="/static/jsencrypt/jsencrypt.min.js" type="text/javascript" charset="utf-8"></script> -->
 <script src="/static/data.js" type="text/javascript" charset="utf-8"></script>
 <script>
@@ -82,6 +74,16 @@
 	var raw = "Enter text here.";
 	editor.setValue(raw);
 	var filelist = clist_bind("filelist", "blocks", function(x) {return x;}), credlist = clist_bind("credlist", "credentials", function(x) {return x;});
+	var globalbtns = btnset_bind("globalbtns");
+	globalbtns.add("FETCH", function() {
+		var key = prompt("Enter Key");
+		if (key) {
+			load_document(key);
+		}
+	});
+	globalbtns.add("NEW", function() {
+		editor.setValue("");
+	});
 	document.getElementById("save").onclick = function() {
 		d_put(editor.getValue(), function(key) {
 			editor.setValue("Saved as " + key);
@@ -100,15 +102,6 @@
 			editor.setValue("Failed loading " + key + " (" + x + ")");
 		});
 	}
-	document.getElementById("fetch").onclick = function() {
-		var key = prompt("Enter Key");
-		if (key) {
-			load_document(key);
-		}
-	};
-	document.getElementById("new").onclick = function() {
-		editor.setValue("");
-	};
 	document.getElementById("add-cred").onclick = function() {
 		var key = prompt("Enter Password");
 		if (key) {

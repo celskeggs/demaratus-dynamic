@@ -28,37 +28,34 @@
 		text-align: center;
 		margin-bottom: 10px;
 	}
-	.flash {
-		color: red;
-	}
 </style>
 <script type="text/javascript" src="/static/sjcl.js"></script>
+<script src="/static/ace/ace.js" type="text/javascript" charset="utf-8"></script>
+<script src="/static/clist.js" type="text/javascript" charset="utf-8"></script>
+<script src="/static/btnset.js" type="text/javascript" charset="utf-8"></script>
+<script src="/static/msgreadout.js" type="text/javascript" charset="utf-8"></script>
+<!-- <script src="/static/jsencrypt/jsencrypt.min.js" type="text/javascript" charset="utf-8"></script> -->
+<script src="/static/data.js" type="text/javascript" charset="utf-8"></script>
 </head>
 <body>
 
 <div id="sidebar">
 	<div class="header">Demaratus Editor</div>
 	<div class="header" id="globalbtns"></div>
-	<div class="header" id="filelist-msg">Preloading...</div>
+	<div class="header" id="msgbox">Preloading...</div>
 	<div class="header" id="credbtns"></div>
 	<div id="credlist"></div>
 	<div class="header" id="filebtns"></div>
 	<div id="filelist"></div>
 </div>
-<div id="editor">Loading...</div>
+<div id="editor"></div>
 
-<script src="/static/ace/ace.js" type="text/javascript" charset="utf-8"></script>
-<script src="/static/clist.js" type="text/javascript" charset="utf-8"></script>
-<script src="/static/btnset.js" type="text/javascript" charset="utf-8"></script>
-<!-- <script src="/static/jsencrypt/jsencrypt.min.js" type="text/javascript" charset="utf-8"></script> -->
-<script src="/static/data.js" type="text/javascript" charset="utf-8"></script>
 <script>
 	var editor = ace.edit("editor");
 	editor.setTheme("ace/theme/monokai");
 	// editor.getSession().setMode("ace/mode/javascript");
-	var raw = "Enter text here.";
-	editor.setValue(raw);
 	var filelist = clist_bind("filelist", "blocks", function(x) {return x;}), credlist = clist_bind("credlist", "credentials", function(x) {return x;});
+	var msgbox = msgreadout_bind("msgbox");
 	var globalbtns = btnset_bind("globalbtns");
 	globalbtns.add("FETCH", function() {
 		var key = prompt("Enter Key");
@@ -83,11 +80,10 @@
 	credbtns.add("DECRYPT*", function() {
 		var decrypted = d_decrypt_any(credlist, editor.getValue());
 		if (decrypted.success) {
-			set_document_readout("Working credential: #" + decrypted.key_id + ".");
+			msgbox.set("Working credential: #" + decrypted.key_id + ".");
 			editor.setValue(decrypted.out);
 		} else {
-			set_document_readout("No working credentials.");
-			flash_document_readout();
+			msgbox.set("No working credentials.", true);
 		}
 	}, is_valid_decrypt);
 	credbtns.add("DECRYPT", function() {
@@ -95,11 +91,10 @@
 		if (selected !== null) {
 			var decrypted = d_decrypt(selected, editor.getValue());
 			if (decrypted !== null) {
-				set_document_readout("Decrypted.");
+				msgbox.set("Decrypted.");
 				editor.setValue(decrypted);
 			} else {
-				set_document_readout("Failed.");
-				flash_document_readout();
+				msgbox.set("Failed.", true);
 			}
 		}
 	}, function() {
@@ -109,24 +104,24 @@
 		var selected = credlist.selected();
 		if (selected !== null) {
 			var encrypted = d_encrypt(selected, editor.getValue());
-			set_document_readout("Encrypted.");
+			msgbox.set("Encrypted.");
 			editor.setValue(encrypted);
 		}
 	}, function() {
 		return credlist.selected() !== null;
 	});
 	function refresh_listing() {
-		set_document_readout("Depopulating...");
+		msgbox.set("Depopulating...");
 		filelist.clear();
-		set_document_readout("Loading...");
+		msgbox.set("Loading...");
 		d_list(function(data) {
-			set_document_readout("Repopulating...");
+			msgbox.set("Repopulating...");
 			for (var i=0; i<data.length; i++) {
 				filelist.add(d_dashed(data[i]));
 			}
-			set_document_readout("Loaded.");
+			msgbox.set("Loaded.");
 		}, function(x) {
-			set_document_readout("Error: " + x);
+			msgbox.set("Error: " + x);
 		});
 	}
 	var filebtns = btnset_bind("filebtns");
@@ -157,13 +152,6 @@
 	}, function() {
 		return filelist.selected() !== null;
 	});
-	function flash_document_readout() {
-		document.getElementById("filelist-msg").classList.add("flash");
-		setTimeout("document.getElementById('filelist-msg').classList.remove('flash')", 500);
-	}
-	function set_document_readout(msg) {
-		document.getElementById("filelist-msg").textContent = msg;
-	}
 	function set_class(elem, cls, value) {
 		if (value) {
 			elem.classList.add(cls);

@@ -1,10 +1,7 @@
-function btnset_add_styles(code) {
+{
 	var elem = document.createElement("style");
 	elem.type = "text/css";
-	elem.textContent = code;
-	document.head.appendChild(elem);
-}
-btnset_add_styles('\
+	elem.textContent = '\
 .btnset button {\
 	position: relative;\
 	background-color: #277822;\
@@ -15,7 +12,9 @@ btnset_add_styles('\
 }\
 .btnset button.btnset_disabled {\
 	background-color: #772822;\
-}');
+}';
+	document.head.appendChild(elem);
+}
 function btnset_bind(docid) {
 	var doc = document.getElementById(docid);
 	doc.classList.add("btnset");

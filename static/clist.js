@@ -1,10 +1,7 @@
-function clist_add_styles(code) {
+{
 	var elem = document.createElement("style");
 	elem.type = "text/css";
-	elem.textContent = code;
-	document.head.appendChild(elem);
-}
-clist_add_styles("\
+	elem.textContent = '\
 .clist_list ul {\
 	background-color: #272822;\
 	color: #8f908a;\
@@ -27,7 +24,9 @@ clist_add_styles("\
 }\
 .clist_list ul li:active {\
 	background-color: #575852;\
-}");
+}';
+	document.head.appendChild(elem);
+}
 function clist_bind(docid, suffix, stringifier) {
 	var doc = document.getElementById(docid);
 	doc.classList.add("clist_list");

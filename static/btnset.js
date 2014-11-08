@@ -11,8 +11,7 @@ btnset_add_styles('\
 	border: none;\
 	color: white;\
 	font: 15px "Monaco","Menlo","Ubuntu Mono","Consolas","source-code-pro",monospace;\
-	margin-right: 5px;\
-	margin-left: 5px;\
+	margin: 5px;\
 }\
 .btnset button.btnset_disabled {\
 	background-color: #772822;\

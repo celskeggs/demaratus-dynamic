@@ -39,25 +39,10 @@
 <div id="sidebar">
 	<div class="header">Demaratus Editor</div>
 	<div class="header" id="globalbtns"></div>
-	<div class="header">
-		<button type="button" id="fetch">FETCH</button>
-		<button type="button" id="new">NEW</button>
-	</div>
 	<div class="header" id="filelist-msg">Preloading...</div>
-	<div class="header">
-		<button type="button" id="add-cred">ADD</button>
-	</div>
-	<div class="header">
-		<button type="button" id="decrypt-any">DECRYPT*</button>
-		<button type="button" id="decrypt-one">DECRYPT</button>
-		<button type="button" id="encrypt">ENCRYPT</button>
-	</div>
+	<div class="header" id="credbtns"></div>
 	<div id="credlist"></div>
-	<div class="header">
-		<button type="button" id="refresh">REFRESH</button>
-		<button type="button" id="save">SAVE</button>
-		<button type="button" id="load">LOAD</button>
-	</div>
+	<div class="header" id="filebtns"></div>
 	<div id="filelist"></div>
 </div>
 <div id="editor">Loading...</div>
@@ -84,39 +69,28 @@
 	globalbtns.add("NEW", function() {
 		editor.setValue("");
 	});
-	document.getElementById("save").onclick = function() {
-		d_put(editor.getValue(), function(key) {
-			editor.setValue("Saved as " + key);
-			setTimeout("refresh_listing()", 500);
-		}, function(x) {
-			alert("Could not save: " + x);
-			setTimeout("refresh_listing()", 500);
-		});
-	};
-	function load_document(key) {
-		key = d_undashed(key);
-		editor.setValue("Loading: " + key);
-		d_get(key, function(data) {
-			editor.setValue(data);
-		}, function(x) {
-			editor.setValue("Failed loading " + key + " (" + x + ")");
-		});
+	function is_valid_decrypt() {
+		var value = editor.getValue();
+		return value !== null && value.contains("\"iv\":\"") && value.contains("\"salt\":\"");
 	}
-	document.getElementById("add-cred").onclick = function() {
+	var credbtns = btnset_bind("credbtns");
+	credbtns.add("ADD", function() {
 		var key = prompt("Enter Password");
 		if (key) {
 			credlist.add(key);
 		}
-	};
-	document.getElementById("encrypt").onclick = function() {
-		var selected = credlist.selected();
-		if (selected !== null) {
-			var encrypted = d_encrypt(selected, editor.getValue());
-			set_document_readout("Encrypted.");
-			editor.setValue(encrypted);
+	});
+	credbtns.add("DECRYPT*", function() {
+		var decrypted = d_decrypt_any(credlist, editor.getValue());
+		if (decrypted.success) {
+			set_document_readout("Working credential: #" + decrypted.key_id + ".");
+			editor.setValue(decrypted.out);
+		} else {
+			set_document_readout("No working credentials.");
+			flash_document_readout();
 		}
-	};
-	document.getElementById("decrypt-one").onclick = function() {
+	}, is_valid_decrypt);
+	credbtns.add("DECRYPT", function() {
 		var selected = credlist.selected();
 		if (selected !== null) {
 			var decrypted = d_decrypt(selected, editor.getValue());
@@ -128,49 +102,19 @@
 				flash_document_readout();
 			}
 		}
-	};
-	document.getElementById("decrypt-any").onclick = function() {
-		var decrypted = d_decrypt_any(credlist, editor.getValue());
-		if (decrypted.success) {
-			set_document_readout("Working credential: #" + decrypted.key_id + ".");
-			editor.setValue(decrypted.out);
-		} else {
-			set_document_readout("No working credentials.");
-			flash_document_readout();
+	}, function() {
+		return is_valid_decrypt() && credlist.selected() !== null;
+	});
+	credbtns.add("ENCRYPT", function() {
+		var selected = credlist.selected();
+		if (selected !== null) {
+			var encrypted = d_encrypt(selected, editor.getValue());
+			set_document_readout("Encrypted.");
+			editor.setValue(encrypted);
 		}
-	};
-	function flash_document_readout() {
-		document.getElementById("filelist-msg").classList.add("flash");
-		setTimeout("document.getElementById('filelist-msg').classList.remove('flash')", 500);
-	}
-	function set_document_readout(msg) {
-		document.getElementById("filelist-msg").textContent = msg;
-	}
-	document.getElementById("load").onclick = function() {
-		var key = filelist.selected();
-		if (key) {
-			load_document(key);
-		}
-	};
-	function set_class(elem, cls, value) {
-		if (value) {
-			elem.classList.add(cls);
-		} else {
-			elem.classList.remove(cls);
-		}
-	}
-	function refresh_local() {
-		// editor.setValue(d_encrypt(this.textContent, editor.getValue()));
-		set_class(document.getElementById("load"), "disabled", filelist.selected() === null);
-		var value = editor.getValue();
-		var valid_decrypt = value !== null && value.contains("\"iv\":\"") && value.contains("\"salt\":\"");
-		set_class(document.getElementById("decrypt-one"), "disabled", !valid_decrypt || credlist.selected() === null);
-		set_class(document.getElementById("decrypt-any"), "disabled", !valid_decrypt);
-		set_class(document.getElementById("encrypt"), "disabled", credlist.selected() === null);
-	}
-	filelist.listeners.push(refresh_local);
-	credlist.listeners.push(refresh_local);
-	editor.on("change", refresh_local);
+	}, function() {
+		return credlist.selected() !== null;
+	});
 	function refresh_listing() {
 		set_document_readout("Depopulating...");
 		filelist.clear();
@@ -185,8 +129,56 @@
 			set_document_readout("Error: " + x);
 		});
 	}
-	document.getElementById("refresh").onclick = refresh_listing;
-	refresh_local();
+	var filebtns = btnset_bind("filebtns");
+	filebtns.add("REFRESH", refresh_listing);
+	filebtns.add("SAVE", function() {
+		d_put(editor.getValue(), function(key) {
+			editor.setValue("Saved as " + key);
+			setTimeout("refresh_listing()", 500);
+		}, function(x) {
+			alert("Could not save: " + x);
+			setTimeout("refresh_listing()", 500);
+		});
+	});
+	function load_document(key) {
+		key = d_undashed(key);
+		editor.setValue("Loading: " + key);
+		d_get(key, function(data) {
+			editor.setValue(data);
+		}, function(x) {
+			editor.setValue("Failed loading " + key + " (" + x + ")");
+		});
+	}
+	filebtns.add("LOAD", function() {
+		var key = filelist.selected();
+		if (key) {
+			load_document(key);
+		}
+	}, function() {
+		return filelist.selected() !== null;
+	});
+	function flash_document_readout() {
+		document.getElementById("filelist-msg").classList.add("flash");
+		setTimeout("document.getElementById('filelist-msg').classList.remove('flash')", 500);
+	}
+	function set_document_readout(msg) {
+		document.getElementById("filelist-msg").textContent = msg;
+	}
+	function set_class(elem, cls, value) {
+		if (value) {
+			elem.classList.add(cls);
+		} else {
+			elem.classList.remove(cls);
+		}
+	}
+	function refresh_local() {
+		globalbtns.update();
+		credbtns.update();
+		filebtns.update();
+	}
+	filelist.listeners.push(refresh_local);
+	credlist.listeners.push(refresh_local);
+	editor.on("change", refresh_local);
 	refresh_listing();
 </script>
 </body>

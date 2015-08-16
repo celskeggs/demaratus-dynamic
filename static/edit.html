@@ -3,17 +3,16 @@
 <head>
 <title>Demaratus Editor</title>
 <style type="text/css" media="screen">
-	#editor { 
+	#editor, #sidebar {
 		position: absolute;
 		top: 0;
-		right: 0;
 		bottom: 0;
+	}
+	#editor {
+		right: 0;
 		left: 320px;
 	}
 	#sidebar {
-		position: absolute;
-		top: 0;
-		bottom: 0;
 		left: 0;
 		width: 300px;
 		background-color: #272822;
@@ -21,7 +20,7 @@
 		padding: 10px;
 		font: 15px "Monaco","Menlo","Ubuntu Mono","Consolas","source-code-pro",monospace;
 	}
-	.header {
+	#sidebar div {
 		position: relative;
 		left: 0;
 		right: 0;
@@ -40,12 +39,12 @@
 <body>
 
 <div id="sidebar">
-	<div class="header">Demaratus Editor</div>
-	<div class="header" id="globalbtns"></div>
-	<div class="header" id="msgbox">Preloading...</div>
-	<div class="header" id="credbtns"></div>
+	<div>Demaratus Editor</div>
+	<div id="globalbtns"></div>
+	<div id="msgbox">Preloading...</div>
+	<div id="credbtns"></div>
 	<div id="credlist"></div>
-	<div class="header" id="filebtns"></div>
+	<div id="filebtns"></div>
 	<div id="filelist"></div>
 </div>
 <div id="editor"></div>
